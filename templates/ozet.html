@@ -1,0 +1,129 @@
+{% extends "base.html" %}
+
+{% block title %}Özet · PDGM İş Takip{% endblock %}
+
+{% block content %}
+<section class="sayfa-baslik">
+    <div>
+        <p class="ust-etiket">PERFORMANS ÖZETİ</p>
+        <h1>Üretim Özeti</h1>
+        <p class="soluk">Tamamlanan işler, zamanında teslim ve haftalık gerçekleşme.</p>
+    </div>
+</section>
+
+<section class="istatistik-grid">
+    <article class="istatistik kart-sirada">
+        <span>Sırada</span>
+        <strong>{{ genel.sirada }}</strong>
+    </article>
+    <article class="istatistik kart-devam">
+        <span>Devam Eden</span>
+        <strong>{{ genel.devam }}</strong>
+    </article>
+    <article class="istatistik kart-tamam">
+        <span>Tamamlanan</span>
+        <strong>{{ genel.tamam }}</strong>
+    </article>
+    <article class="istatistik kart-gecikme">
+        <span>Süresi Aşan</span>
+        <strong>{{ genel.gecikme }}</strong>
+    </article>
+</section>
+
+<section class="donem-grid">
+{% for ad, d in donemler.items() %}
+    <article class="panel-kutu donem-karti">
+        <p class="ust-etiket">{{ ad|upper }}</p>
+        <h2>{{ d.kart }} kart</h2>
+        <div class="donem-metrik">
+            <span>Tamamlanan adet</span>
+            <strong>{{ d.adet }}</strong>
+        </div>
+        <div class="donem-metrik">
+            <span>Zamanında</span>
+            <strong>%{{ d.zamaninda_yuzde }}</strong>
+        </div>
+        <div class="donem-metrik">
+            <span>Ort. sapma</span>
+            <strong>{{ d.ort_sapma }} gün</strong>
+        </div>
+    </article>
+{% endfor %}
+</section>
+
+<section class="panel-kutu">
+    <div class="panel-baslik">
+        <div>
+            <p class="ust-etiket">8 HAFTALIK GÖRÜNÜM</p>
+            <h2>Planlanan / Tamamlanan Kart</h2>
+        </div>
+    </div>
+
+    <div class="grafik-aciklama">
+        <span><i class="lejant plan"></i>Planlanan</span>
+        <span><i class="lejant tamam"></i>Tamamlanan</span>
+    </div>
+
+    <div class="hafta-grafik" role="img" aria-label="Son sekiz hafta planlanan ve tamamlanan kart grafiği">
+    {% for h in haftalar %}
+        {% set plan_yuzde = (h.planlanan / en_yuksek * 100) if en_yuksek else 0 %}
+        {% set tamam_yuzde = (h.tamamlanan / en_yuksek * 100) if en_yuksek else 0 %}
+        <div class="hafta-sutun">
+            <div class="sutun-alani">
+                <div class="sutun plan" style="height: {{ plan_yuzde }}%">
+                    <span>{{ h.planlanan }}</span>
+                </div>
+                <div class="sutun tamam" style="height: {{ tamam_yuzde }}%">
+                    <span>{{ h.tamamlanan }}</span>
+                </div>
+            </div>
+            <strong>H{{ h.hafta_no }}</strong>
+            <small>{{ h.etiket }}</small>
+        </div>
+    {% endfor %}
+    </div>
+</section>
+
+<section class="panel-kutu">
+    <div class="panel-baslik">
+        <div>
+            <p class="ust-etiket">DİKKAT GEREKTİREN</p>
+            <h2>Geciken Açık Kartlar</h2>
+        </div>
+        <span class="sayi-rozet">{{ geciken_kartlar|length }}</span>
+    </div>
+
+    {% if geciken_kartlar %}
+    <div class="tablo-kapsayici">
+        <table>
+            <thead>
+                <tr>
+                    <th>Talep NO</th>
+                    <th>Stok No</th>
+                    <th>Durum</th>
+                    <th>Plan Başlangıç</th>
+                    <th>Plan Teslim</th>
+                    <th>Tamamlanan</th>
+                    <th>Değerlendirme</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for k in geciken_kartlar %}
+                <tr>
+                    <td>{{ k.talep_no or "—" }}</td>
+                    <td>{{ k.stok_no or "—" }}</td>
+                    <td>{{ k.durum }}</td>
+                    <td>{{ k.plan_baslama|gun }}</td>
+                    <td>{{ k.plan_teslim|gun }}</td>
+                    <td>{{ k.tamamlanan_adet }}/{{ k.toplam_adet }}</td>
+                    <td><span class="durum-rozet kotu">{{ k.rozet }}</span></td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+    {% else %}
+        <div class="bos-durum">Şu anda geciken açık kart bulunmuyor.</div>
+    {% endif %}
+</section>
+{% endblock %}

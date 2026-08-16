@@ -1,0 +1,174 @@
+{% extends "base.html" %}
+
+{% block title %}Pano · PDGM İş Takip{% endblock %}
+
+{% block content %}
+<section class="sayfa-baslik">
+    <div>
+        <p class="ust-etiket">CANLI ÜRETİM PANOSU</p>
+        <h1>İş Durumu</h1>
+        <p class="soluk">Son görüntüleme: {{ guncelleme }} · {{ bugun }}</p>
+    </div>
+    <button class="buton buton-hayalet" type="button" onclick="window.location.reload()">
+        Yenile
+    </button>
+</section>
+
+<section class="istatistik-grid">
+    <article class="istatistik kart-devam">
+        <span>Devam Eden</span>
+        <strong>{{ sayac.devam }}</strong>
+    </article>
+    <article class="istatistik kart-sirada">
+        <span>Sırada</span>
+        <strong>{{ sayac.sirada }}</strong>
+    </article>
+    <article class="istatistik kart-tamam">
+        <span>Tamamlanan</span>
+        <strong>{{ sayac.tamam }}</strong>
+    </article>
+    <article class="istatistik kart-gecikme">
+        <span>Süresi Aşan</span>
+        <strong>{{ sayac.gecikme }}</strong>
+    </article>
+</section>
+
+<section class="pano-grid">
+    <article class="panel-kutu pano-devam">
+        <div class="panel-baslik">
+            <div>
+                <p class="ust-etiket">AKTİF</p>
+                <h2>Devam Eden İşler</h2>
+            </div>
+            <span class="sayi-rozet">{{ devam|length }}</span>
+        </div>
+
+        {% if devam %}
+            <div class="kart-listesi">
+            {% for k in devam %}
+                <article class="is-karti {{ k.renk }}">
+                    <div class="is-karti-ust">
+                        <div>
+                            <strong>{{ k.talep_no or "Talep yok" }}</strong>
+                            <span>{{ k.stok_no or "Stok no yok" }}</span>
+                        </div>
+                        <div class="operator-rozetler">
+                            <span class="durum-rozet {{ k.renk }}">{{ k.rozet }}</span>
+                            {% if k.kaynakta_yok %}
+                                <span class="durum-rozet uyari">Son Excelde yok</span>
+                            {% endif %}
+                        </div>
+                    </div>
+
+                    <div class="kart-bilgiler">
+                        <span><b>Sahibi:</b> {{ k.talep_sahibi or "—" }}</span>
+                        <span><b>Plan teslim:</b> {{ k.plan_teslim|gun }}</span>
+                        <span><b>Operatör:</b> {{ k.operator or "—" }}</span>
+                    </div>
+
+                    <div class="ilerleme">
+                        <div class="ilerleme-ust">
+                            <span>{{ k.tamamlanan_adet }}/{{ k.toplam_adet }} adet</span>
+                            <strong>%{{ k.adet_yuzde }}</strong>
+                        </div>
+                        <div class="ilerleme-ray">
+                            <div class="ilerleme-dolgu" style="width: {{ [k.adet_yuzde, 100]|min }}%"></div>
+                        </div>
+                    </div>
+
+                    {% if k.aciklama %}
+                        <p class="kart-not">{{ k.aciklama }}</p>
+                    {% endif %}
+                </article>
+            {% endfor %}
+            </div>
+        {% else %}
+            <div class="bos-durum">Şu anda devam eden iş yok.</div>
+        {% endif %}
+    </article>
+
+    <article class="panel-kutu pano-sirada">
+        <div class="panel-baslik">
+            <div>
+                <p class="ust-etiket">BEKLEYEN</p>
+                <h2>Sıradaki İşler</h2>
+            </div>
+            <span class="sayi-rozet">{{ sirada|length }}</span>
+        </div>
+
+        {% if sirada %}
+            <div class="mini-liste">
+            {% for k in sirada %}
+                <div class="mini-satir">
+                    <div>
+                        <strong>{{ k.talep_no or "—" }}</strong>
+                        <span>{{ k.stok_no or "—" }}</span>
+                    </div>
+                    <div class="mini-sag">
+                        <span class="durum-rozet {{ k.renk }}">{{ k.rozet }}</span>
+                        <small>{{ k.plan_baslama|gun }}</small>
+                    </div>
+                </div>
+            {% endfor %}
+            </div>
+        {% else %}
+            <div class="bos-durum">Sırada bekleyen iş yok.</div>
+        {% endif %}
+    </article>
+</section>
+
+<section class="panel-kutu">
+    <div class="panel-baslik">
+        <div>
+            <p class="ust-etiket">SON HAREKETLER</p>
+            <h2>Son Tamamlananlar</h2>
+        </div>
+    </div>
+
+    {% if tamamlanan %}
+        <div class="tablo-kapsayici">
+            <table>
+                <thead>
+                    <tr>
+                        <th>Talep NO</th>
+                        <th>Stok No</th>
+                        <th>Adet</th>
+                        <th>Bitiş</th>
+                        <th>Operatör</th>
+                        <th>Değerlendirme</th>
+                    </tr>
+                </thead>
+                <tbody>
+                {% for k in tamamlanan %}
+                    <tr>
+                        <td>{{ k.talep_no or "—" }}</td>
+                        <td>{{ k.stok_no or "—" }}</td>
+                        <td>{{ k.tamamlanan_adet }}/{{ k.toplam_adet }}</td>
+                        <td>{{ (k.bitis_zamani or k.gerceklesen_teslim)|gun }}</td>
+                        <td>{{ k.operator or "—" }}</td>
+                        <td><span class="durum-rozet {{ k.renk }}">{{ k.rozet }}</span></td>
+                    </tr>
+                {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    {% else %}
+        <div class="bos-durum">Henüz tamamlanan kart yok.</div>
+    {% endif %}
+</section>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const PANEL_SCROLL = "pdgm-panel-scroll";
+const kayitli = sessionStorage.getItem(PANEL_SCROLL);
+if (kayitli !== null) {
+    sessionStorage.removeItem(PANEL_SCROLL);
+    window.scrollTo(0, Number(kayitli) || 0);
+}
+window.setTimeout(() => {
+    sessionStorage.setItem(PANEL_SCROLL, String(window.scrollY));
+    window.location.reload();
+}, 30000);
+</script>
+{% endblock %}

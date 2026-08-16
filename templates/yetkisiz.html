@@ -1,0 +1,12 @@
+{% extends "base.html" %}
+
+{% block title %}Yetkisiz · PDGM İş Takip{% endblock %}
+
+{% block content %}
+<section class="durum-sayfasi">
+    <div class="durum-ikon">403</div>
+    <h1>Bu sayfaya erişim yetkiniz yok.</h1>
+    <p>Mevcut hesabınız bu işlemi gerçekleştirmek için gerekli role sahip değil.</p>
+    <a class="buton buton-ana" href="{{ url_for('ana') }}">Ana Sayfaya Dön</a>
+</section>
+{% endblock %}

@@ -1,0 +1,12 @@
+.venv/
+__pycache__/
+*.pyc
+
+data/gizli.key
+data/kullanicilar.json
+data/*.xlsx
+data/yuklenen_exceller/
+data/yedekler/
+data/sunucu.lock
+data/uygulama.log
+data/uygulama.log.*

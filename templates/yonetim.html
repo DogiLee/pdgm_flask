@@ -1,0 +1,374 @@
+{% extends "base.html" %}
+
+{% block title %}Yönetim · PDGM İş Takip{% endblock %}
+
+{% block content %}
+<section class="sayfa-baslik">
+    <div>
+        <p class="ust-etiket">YÖNETİCİ PANELİ</p>
+        <h1>Sistem Yönetimi</h1>
+        <p class="soluk">Excel aktarımı, kart müdahalesi, kayıtlar ve audit geçmişi.</p>
+    </div>
+
+    <div class="baslik-aksiyon">
+        <a class="buton buton-hayalet" href="{{ url_for('rapor_indir') }}">Rapor İndir</a>
+        <a class="buton buton-ana" href="{{ url_for('panel') }}">Canlı Panoyu Aç</a>
+    </div>
+</section>
+
+<section class="yonetim-grid">
+    <article class="panel-kutu">
+        <div class="panel-baslik">
+            <div>
+                <p class="ust-etiket">VERİ AKTARIMI</p>
+                <h2>Haftalık Excel Yükle</h2>
+            </div>
+        </div>
+
+        <form method="post"
+              action="{{ url_for('yukle') }}"
+              enctype="multipart/form-data"
+              class="yukleme-form">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+
+            <label class="dosya-sec">
+                <span>Excel dosyası seçin</span>
+                <input type="file" name="dosya" accept=".xlsx,.xlsm" required>
+            </label>
+
+            <button class="buton buton-ana" type="submit">Excel'i Aktar</button>
+        </form>
+
+        <p class="yardim">
+            Yalnız `.xlsx` veya `.xlsm`. Dosya önce doğrulanır; hata varsa hiçbir kart değişmez.
+            Mevcut kartlarda plan/adet güncellenir; operatörün iş durumu ve tamamlanan adedi korunur.
+            Yeni satırlar eklenir. Excel'de artık olmayan açık kartlar silinmez; "Son Excelde yok" işaretlenir.
+            Her başarılı yüklemeden önce <code>data/yedekler/</code> altına anlık kopya alınır.
+        </p>
+    </article>
+
+    <article class="panel-kutu">
+        <div class="panel-baslik">
+            <div>
+                <p class="ust-etiket">BAKIM</p>
+                <h2>Kayıt Dosyaları</h2>
+            </div>
+        </div>
+
+        <div class="buton-grup dikey">
+            <a class="buton buton-hayalet"
+               href="{{ url_for('kayit_dosyasi', hangi='kartlar') }}">Kartlar Excel</a>
+            <a class="buton buton-hayalet"
+               href="{{ url_for('kayit_dosyasi', hangi='log') }}">İşlem Logu</a>
+            <a class="buton buton-hayalet"
+               href="{{ url_for('kayit_dosyasi', hangi='yuklemeler') }}">Yükleme Geçmişi</a>
+
+            <form method="post"
+                  action="{{ url_for('yeniden_oku') }}"
+                  onsubmit="return confirm('Diskteki kartlar.xlsx tekrar okunacak. Devam edilsin mi?')">
+                <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+                <button class="buton buton-uyari tam-genislik" type="submit">
+                    Kart Dosyasını Yeniden Oku
+                </button>
+            </form>
+        </div>
+    </article>
+</section>
+
+{% if kaynakta_olmayan %}
+<section class="panel-kutu uyari-kutu">
+    <div class="panel-baslik">
+        <div>
+            <p class="ust-etiket">DİKKAT</p>
+            <h2>Son Excel'de Olmayan Açık İşler</h2>
+        </div>
+        <span class="sayi-rozet">{{ kaynakta_olmayan|length }}</span>
+    </div>
+    <p class="yardim">
+        Bu kartlar operatör ilerlemesini korur ve ekranda kalır. Anahtar (Talep NO + Stok No)
+        kaynak Excel'de değiştiyse çift kayıt oluşmuş olabilir — kontrol edin.
+    </p>
+    <div class="mini-liste">
+    {% for k in kaynakta_olmayan %}
+        <div class="mini-satir">
+            <div>
+                <strong>{{ k.talep_no or "—" }} · {{ k.stok_no or "—" }}</strong>
+                <span>{{ k.is_durumu }} · {{ k.tamamlanan_adet }}/{{ k.toplam_adet }} adet</span>
+            </div>
+            <div class="mini-sag">
+                <span class="durum-rozet uyari">Son Excelde yok</span>
+            </div>
+        </div>
+    {% endfor %}
+    </div>
+</section>
+{% endif %}
+
+<section class="panel-kutu">
+    <div class="panel-baslik">
+        <div>
+            <p class="ust-etiket">KART YÖNETİMİ</p>
+            <h2>Aktif Kartlar</h2>
+        </div>
+
+        <div class="arama kucuk">
+            <label class="sr-only" for="admin-kart-ara">Kart ara</label>
+            <input id="admin-kart-ara" type="search" placeholder="Kart ara...">
+        </div>
+    </div>
+
+    <div class="tablo-kapsayici">
+        <table id="admin-kart-tablosu">
+            <thead>
+                <tr>
+                    <th>Talep NO</th>
+                    <th>Stok No</th>
+                    <th>Talep Sahibi</th>
+                    <th>Adet</th>
+                    <th>İş durumu</th>
+                    <th>Excel durumu</th>
+                    <th>Plan Teslim</th>
+                    <th>Operatör</th>
+                    <th>İşlem</th>
+                </tr>
+            </thead>
+            <tbody>
+            {% for k in kartlar %}
+                <tr data-admin-kart
+                    data-arama="{{ ((k.talep_no or '') ~ ' ' ~ (k.stok_no or '') ~ ' ' ~ (k.talep_sahibi or '') ~ ' ' ~ (k.durum or '') ~ ' ' ~ (k.excel_durum or ''))|lower }}">
+                    <td>{{ k.talep_no or "—" }}</td>
+                    <td>{{ k.stok_no or "—" }}</td>
+                    <td>{{ k.talep_sahibi or "—" }}</td>
+                    <td>{{ k.tamamlanan_adet }}/{{ k.toplam_adet }}</td>
+                    <td>
+                        <strong>{{ k.is_durumu }}</strong>
+                        {% if k.kaynakta_yok and k.durum != "TAMAMLANDI" %}
+                            <div><span class="durum-rozet uyari">Son Excelde yok</span></div>
+                        {% endif %}
+                    </td>
+                    <td>{{ k.kaynak_durumu or "—" }}</td>
+                    <td>{{ k.plan_teslim|gun }}</td>
+                    <td>{{ k.operator or "—" }}</td>
+                    <td>
+                        <div class="satir-aksiyon">
+                            <button
+                                class="buton buton-kucuk buton-hayalet"
+                                type="button"
+                                data-admin-duzenle
+                                data-id="{{ k.id }}"
+                                data-talep="{{ k.talep_no or '' }}"
+                                data-stok="{{ k.stok_no or '' }}"
+                                data-durum="{{ k.durum }}"
+                                data-toplam="{{ k.toplam_adet }}"
+                                data-tamamlanan="{{ k.tamamlanan_adet }}"
+                                data-not="{{ k.aciklama or '' }}">
+                                Düzenle
+                            </button>
+
+                            <button
+                                class="buton buton-kucuk buton-tehlike"
+                                type="button"
+                                data-admin-gizle
+                                data-id="{{ k.id }}"
+                                data-talep="{{ k.talep_no or '' }}">
+                                Gizle
+                            </button>
+                        </div>
+                    </td>
+                </tr>
+            {% else %}
+                <tr>
+                    <td colspan="9" class="bos-durum">Kart bulunmuyor.</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+</section>
+
+<section class="yonetim-grid">
+    <article class="panel-kutu">
+        <div class="panel-baslik">
+            <div>
+                <p class="ust-etiket">SON YÜKLEMELER</p>
+                <h2>Excel Geçmişi</h2>
+            </div>
+        </div>
+
+        {% if yuklemeler %}
+            <div class="mini-liste">
+            {% for y in yuklemeler %}
+                <div class="mini-satir">
+                    <div>
+                        <strong>{{ y.dosya or "—" }}</strong>
+                        <span>{{ y.zaman or "—" }} · {{ y.kullanici or "—" }}</span>
+                    </div>
+                    <div class="mini-sag">
+                        <strong>{{ y.satir or 0 }} satır</strong>
+                        <small>{{ y.yeni or 0 }} yeni · {{ y.guncellenen or 0 }} güncel</small>
+                    </div>
+                </div>
+            {% endfor %}
+            </div>
+        {% else %}
+            <div class="bos-durum">Henüz Excel yüklenmemiş.</div>
+        {% endif %}
+    </article>
+
+    <article class="panel-kutu">
+        <div class="panel-baslik">
+            <div>
+                <p class="ust-etiket">AUDIT</p>
+                <h2>Son İşlemler</h2>
+            </div>
+        </div>
+
+        {% if loglar %}
+            <div class="log-liste">
+            {% for l in loglar %}
+                <div class="log-satir">
+                    <div>
+                        <strong>{{ l.islem or "İşlem" }}</strong>
+                        <span>{{ l.kullanici or "—" }} · {{ l.zaman or "—" }}</span>
+                    </div>
+                    <small>
+                        {% if l.talep_no %}{{ l.talep_no }}{% endif %}
+                        {% if l.stok_no %} · {{ l.stok_no }}{% endif %}
+                        {% if l.detay %} · {{ l.detay }}{% endif %}
+                    </small>
+                </div>
+            {% endfor %}
+            </div>
+        {% else %}
+            <div class="bos-durum">Henüz işlem kaydı yok.</div>
+        {% endif %}
+    </article>
+</section>
+
+<dialog id="admin-dialog" class="modal">
+    <form method="dialog" class="modal-kutu" id="admin-form">
+        <div class="modal-baslik">
+            <div>
+                <p class="ust-etiket">ADMIN MÜDAHALESİ</p>
+                <h2 id="admin-baslik">Kart Düzenle</h2>
+            </div>
+            <button class="ikon-buton" type="button" data-dialog-kapat aria-label="Kapat">×</button>
+        </div>
+
+        <input type="hidden" id="admin-id">
+
+        <div class="iki-kolon">
+            <div class="alan">
+                <label for="admin-durum">Durum</label>
+                <select id="admin-durum">
+                    <option value="SIRADA">SIRADA</option>
+                    <option value="DEVAM EDİYOR">DEVAM EDİYOR</option>
+                    <option value="TAMAMLANDI">TAMAMLANDI</option>
+                </select>
+            </div>
+
+            <div class="alan">
+                <label for="admin-toplam">Toplam adet</label>
+                <input type="number" id="admin-toplam" min="1" required>
+            </div>
+        </div>
+
+        <div class="alan">
+            <label for="admin-tamamlanan">Tamamlanan adet</label>
+            <input type="number" id="admin-tamamlanan" min="0" required>
+        </div>
+
+        <div class="alan">
+            <label for="admin-not">Not</label>
+            <textarea id="admin-not" rows="4"></textarea>
+        </div>
+
+        <div class="modal-aksiyon">
+            <button type="button" class="buton buton-hayalet" data-dialog-kapat>Vazgeç</button>
+            <button type="submit" class="buton buton-ana">Kaydet</button>
+        </div>
+    </form>
+</dialog>
+{% endblock %}
+
+{% block scripts %}
+<script>
+const adminAra = document.getElementById("admin-kart-ara");
+const adminSatirlar = [...document.querySelectorAll("[data-admin-kart]")];
+
+adminAra.addEventListener("input", () => {
+    const arama = adminAra.value.trim().toLocaleLowerCase("tr-TR");
+    adminSatirlar.forEach((satir) => {
+        satir.hidden = arama && !satir.dataset.arama.includes(arama);
+    });
+});
+
+document.querySelectorAll("[data-admin-duzenle]").forEach((buton) => {
+    buton.addEventListener("click", () => {
+        document.getElementById("admin-id").value = buton.dataset.id;
+        document.getElementById("admin-durum").value = buton.dataset.durum;
+        document.getElementById("admin-toplam").value = buton.dataset.toplam;
+        document.getElementById("admin-tamamlanan").value = buton.dataset.tamamlanan;
+        document.getElementById("admin-not").value = buton.dataset.not || "";
+        document.getElementById("admin-baslik").textContent =
+            `${buton.dataset.talep || "Kart"} · ${buton.dataset.stok || ""}`;
+
+        document.getElementById("admin-dialog").showModal();
+    });
+});
+
+document.querySelectorAll("[data-admin-gizle]").forEach((buton) => {
+    buton.addEventListener("click", async () => {
+        const cevap = confirm(
+            `${buton.dataset.talep || "Bu kart"} listeden gizlensin mi?\n\n` +
+            "Kart silinmez; admin gizli olarak işaretlenir."
+        );
+
+        if (!cevap) return;
+
+        buton.disabled = true;
+
+        try {
+            await pdgmFetch("/api/admin/kart-sil", {
+                method: "POST",
+                body: JSON.stringify({ kart_id: Number(buton.dataset.id) })
+            });
+
+            toast("Kart listeden gizlendi.");
+            window.setTimeout(() => window.location.reload(), 500);
+        } catch (hata) {
+            hataMesaji(hata);
+            buton.disabled = false;
+        }
+    });
+});
+
+document.getElementById("admin-form").addEventListener("submit", async (event) => {
+    event.preventDefault();
+
+    const buton = event.submitter;
+    buton.disabled = true;
+
+    try {
+        await pdgmFetch("/api/admin/duzenle", {
+            method: "POST",
+            body: JSON.stringify({
+                kart_id: Number(document.getElementById("admin-id").value),
+                durum: document.getElementById("admin-durum").value,
+                toplam_adet: Number(document.getElementById("admin-toplam").value),
+                tamamlanan_adet: Number(document.getElementById("admin-tamamlanan").value),
+                not: document.getElementById("admin-not").value
+            })
+        });
+
+        toast("Kart güncellendi.");
+        dialogKapat(document.getElementById("admin-dialog"));
+        window.setTimeout(() => window.location.reload(), 500);
+    } catch (hata) {
+        hataMesaji(hata);
+    } finally {
+        buton.disabled = false;
+    }
+});
+</script>
+{% endblock %}

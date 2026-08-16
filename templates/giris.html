@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>Giriş · PDGM İş Takip</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='stil.css') }}">
+</head>
+<body class="giris-sayfa">
+<main class="giris-kutu">
+    <div class="giris-logo">PDGM</div>
+    <h1>PDGM İŞ TAKİP</h1>
+    <p class="alt">Baskı Dizgi Atölyesi</p>
+
+    {% if hata %}
+        <div class="bildirim hata">{{ hata }}</div>
+    {% endif %}
+
+    <form method="post" autocomplete="off" class="giris-form">
+        <div class="alan">
+            <label for="kullanici">Kullanıcı adı</label>
+            <input
+                type="text"
+                id="kullanici"
+                name="kullanici"
+                autocomplete="username"
+                autofocus
+                required>
+        </div>
+
+        <div class="alan">
+            <label for="sifre">Şifre</label>
+            <input
+                type="password"
+                id="sifre"
+                name="sifre"
+                autocomplete="current-password"
+                required>
+        </div>
+
+        <button class="buton buton-ana tam-genislik" type="submit">
+            Giriş Yap
+        </button>
+    </form>
+
+    <p class="giris-dipnot">
+        Bu sistem yalnızca yetkili PDGM personeli içindir.
+    </p>
+</main>
+</body>
+</html>

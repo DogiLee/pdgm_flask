@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="tr">
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="csrf-token" content="{{ csrf_token }}">
+    <title>{% block title %}PDGM İş Takip{% endblock %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='stil.css') }}">
+    {% block head %}{% endblock %}
+</head>
+<body>
+<header class="ust-cubuk">
+    <div class="marka">
+        <a href="{{ url_for('ana') }}" class="marka-link">
+            <span class="marka-isaret">PDGM</span>
+            <span>
+                <strong>İş Takip Sistemi</strong>
+                <small>Baskı Dizgi Atölyesi</small>
+            </span>
+        </a>
+    </div>
+
+    <nav class="ana-nav" aria-label="Ana menü">
+        {% if oturum_rol in ["admin", "operator", "izleyici"] %}
+            <a class="{% if request.endpoint == 'panel' %}aktif{% endif %}"
+               href="{{ url_for('panel') }}">Pano</a>
+            <a class="{% if request.endpoint == 'ozet' %}aktif{% endif %}"
+               href="{{ url_for('ozet') }}">Özet</a>
+        {% endif %}
+
+        {% if oturum_rol in ["admin", "operator"] %}
+            <a class="{% if request.endpoint == 'operator' %}aktif{% endif %}"
+               href="{{ url_for('operator') }}">Operatör</a>
+        {% endif %}
+
+        {% if oturum_rol == "admin" %}
+            <a class="{% if request.endpoint == 'yonetim' %}aktif{% endif %}"
+               href="{{ url_for('yonetim') }}">Yönetim</a>
+        {% endif %}
+    </nav>
+
+    <div class="oturum">
+        <div class="oturum-metin">
+            <strong>{{ oturum_ad or oturum_kullanici }}</strong>
+            <small>{{ oturum_rol|upper }}</small>
+        </div>
+
+        {% if oturum_kullanici %}
+        <form method="post" action="{{ url_for('cikis') }}">
+            <input type="hidden" name="_csrf_token" value="{{ csrf_token }}">
+            <button class="buton buton-hayalet buton-kucuk" type="submit">Çıkış</button>
+        </form>
+        {% endif %}
+    </div>
+</header>
+
+<main class="sayfa">
+    {% with mesajlar = get_flashed_messages(with_categories=true) %}
+        {% if mesajlar %}
+        <section class="bildirimler" aria-live="polite">
+            {% for kategori, mesaj in mesajlar %}
+                <div class="bildirim {{ kategori }}">{{ mesaj }}</div>
+            {% endfor %}
+        </section>
+        {% endif %}
+    {% endwith %}
+
+    {% block content %}{% endblock %}
+</main>
+
+<div id="toast-alani" class="toast-alani" aria-live="polite"></div>
+
+<script>
+function csrfToken() {
+    return document.querySelector('meta[name="csrf-token"]')?.content || "";
+}
+
+async function pdgmFetch(url, options = {}) {
+    const headers = new Headers(options.headers || {});
+    headers.set("X-CSRF-Token", csrfToken());
+
+    if (options.body && !(options.body instanceof FormData) && !headers.has("Content-Type")) {
+        headers.set("Content-Type", "application/json");
+    }
+
+    const response = await fetch(url, {
+        credentials: "same-origin",
+        ...options,
+        headers
+    });
+
+    let data = {};
+    const contentType = response.headers.get("content-type") || "";
+
+    if (contentType.includes("application/json")) {
+        data = await response.json();
+    } else {
+        data = { hata: await response.text() };
+    }
+
+    if (!response.ok) {
+        throw new Error(data.hata || data.detail || "İşlem tamamlanamadı.");
+    }
+
+    return data;
+}
+
+function toast(mesaj, tip = "basari") {
+    const alan = document.getElementById("toast-alani");
+    if (!alan) return;
+
+    const kutu = document.createElement("div");
+    kutu.className = `toast ${tip}`;
+    kutu.textContent = mesaj;
+    alan.appendChild(kutu);
+
+    window.setTimeout(() => kutu.classList.add("goster"), 10);
+    window.setTimeout(() => {
+        kutu.classList.remove("goster");
+        window.setTimeout(() => kutu.remove(), 200);
+    }, 3200);
+}
+
+function hataMesaji(hata) {
+    toast(hata?.message || "Beklenmeyen bir hata oluştu.", "hata");
+}
+
+function htmlKacir(deger) {
+    return String(deger ?? "")
+        .replaceAll("&", "&amp;")
+        .replaceAll("<", "&lt;")
+        .replaceAll(">", "&gt;")
+        .replaceAll('"', "&quot;")
+        .replaceAll("'", "&#039;");
+}
+
+function dialogKapat(dialog) {
+    if (dialog?.open) dialog.close();
+}
+
+document.addEventListener("click", (event) => {
+    const kapat = event.target.closest("[data-dialog-kapat]");
+    if (kapat) {
+        const dialog = kapat.closest("dialog");
+        dialogKapat(dialog);
+    }
+});
+</script>
+
+{% block scripts %}{% endblock %}
+</body>
+</html>
